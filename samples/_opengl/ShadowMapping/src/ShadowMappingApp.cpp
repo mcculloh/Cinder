@@ -48,14 +48,15 @@
 
 #include "cinder/app/App.h"
 #include "cinder/app/RendererGl.h"
-#include "cinder/params/Params.h"
 #include "cinder/gl/gl.h"
 #include "cinder/GeomIo.h"
 #include "cinder/Rand.h"
 #include "cinder/CameraUi.h"
 #include "cinder/Log.h"
 #include "cinder/Color.h"
-
+#if ! defined( CINDER_GL_ES )
+	#include "cinder/CinderImGui.h"
+#endif
 #include "glm/gtx/euler_angles.hpp"
 
 using namespace ci;
@@ -115,8 +116,7 @@ class ShadowMappingApp : public App {
 	void keyDown( KeyEvent event ) override;
   private:
 	void drawScene( float spinAngle, const gl::GlslProgRef& glsl = nullptr );
-	params::InterfaceGlRef		mParams;
-	
+
 	float						mFrameRate;
 	CameraPersp					mCamera;
 	CameraUi					mCamUi;
@@ -165,38 +165,19 @@ void ShadowMappingApp::setup()
 	
 	
 	try {
+#if defined( CINDER_GL_ES )
+		mShadowShader	= gl::GlslProg::create( loadAsset( "shadow_mapping_es3.vert"), loadAsset("shadow_mapping_es3.frag") );
+#else
 		mShadowShader	= gl::GlslProg::create( loadAsset( "shadow_mapping.vert"), loadAsset("shadow_mapping.frag") );
+#endif
 	} catch ( const gl::GlslProgCompileExc& exc ) {
-		CI_LOG_E( "Shader failed to load: " << exc.what() );
-		quit();
+		console() << "Shader failed to load: " << exc.what() << std::endl;
 	}
 	
 	mShadowMap		= ShadowMap::create( mShadowMapSize );
 	mLight.camera.setPerspective( mLight.fov, mShadowMap->getAspectRatio(), 0.5, 500.0 );
 	
-	mParams = params::InterfaceGl::create( "Settings", toPixels( ivec2( 300, 325 ) ) );
-	mParams->addParam( "Framerate", &mFrameRate, "", true );
-	mParams->addSeparator();
-	mParams->addParam( "Light viewpoint", &mLight.toggleViewpoint );
-	mParams->addParam( "Light distance radius", &mLight.distanceRadius ).min( 0 ).max( 450 ).step( 1 );
-	mParams->addParam( "Render only shadow map", &mOnlyShadowmap );
-	mParams->addSeparator();
-	std::vector<std::string> techniques = { "Hard", "PCF3x3", "PCF4x4", "Random" };
-	mParams->addParam( "Technique", techniques, &mShadowTechnique );
-	mParams->addSeparator();
-	mParams->addParam( "Polygon offset factor", &mPolygonOffsetFactor ).step( 0.025f ).min( 0.0f );
-	mParams->addParam( "Polygon offset units", &mPolygonOffsetUnits ).step( 0.025f ).min( 0.0f );
-	mParams->addParam( "Shadow map size",  &mShadowMapSize ).min( 16 ).step( 16 ).updateFn( [this]() {
-		mShadowMap->reset( mShadowMapSize );
-	} );
-	mParams->addParam( "Depth bias", &mDepthBias ).step( 0.00001f ).max( 0.0 );
-	mParams->addText( "(PCF radius is const: tweak in shader.)" );
-	mParams->addSeparator();
-	mParams->addText( "Random sampling params" );
-	mParams->addParam( "Offset radius", &mRandomOffset ).min( 0.0f ).step( 0.05f );
-	mParams->addParam( "Auto normal slope offset", &mEnableNormSlopeOffset );
-	mParams->addParam( "Num samples", &mNumRandomSamples ).min( 1 );
-//	mParams->minimize();
+	ImGui::Initialize();
 	
 	auto positionGlsl = gl::getStockShader( gl::ShaderDef() );
 	
@@ -227,6 +208,30 @@ void ShadowMappingApp::setup()
 
 void ShadowMappingApp::update()
 {
+	ImGui::Begin( "Settings" );
+	ImGui::Text( "Framerate: %f", mFrameRate );
+	ImGui::Separator();
+	ImGui::Checkbox( "Light viewpoint", &mLight.toggleViewpoint );
+	ImGui::DragFloat( "Light distance radius", &mLight.distanceRadius, 1.0f, 0.0f, 450.0f );
+	ImGui::Checkbox( "Render only shadow map", &mOnlyShadowmap );
+	ImGui::Separator();
+	std::vector<std::string> techniques = { "Hard", "PCF3x3", "PCF4x4", "Random" };
+	ImGui::Combo( "Technique", &mShadowTechnique, techniques );
+	ImGui::Separator();
+	ImGui::DragFloat( "Polygon offset factor", &mPolygonOffsetFactor, 0.025f, 0.0f );
+	ImGui::DragFloat( "Polygon offset units", &mPolygonOffsetUnits, 0.025f, 0.0f );
+	if( ImGui::DragInt( "Shadow map size", &mShadowMapSize, 16, 16, 2048 ) ) {
+		mShadowMap->reset( mShadowMapSize );
+	};
+	ImGui::DragFloat( "Depth bias", &mDepthBias, 0.00001f, -1.0f, 0.0f, "%.5f" );
+	ImGui::Text( "(PCF radius is const: tweak in shader.)" );
+	ImGui::Separator();
+	ImGui::Text( "Random sampling params" );
+	ImGui::DragFloat( "Offset radius", &mRandomOffset, 0.05f, 0.0f );
+	ImGui::Checkbox( "Auto normal slope offset", &mEnableNormSlopeOffset );
+	ImGui::DragInt( "Num samples", &mNumRandomSamples, 1.0f, 1, 256 );
+	ImGui::End();
+
 	float e	= (float) getElapsedSeconds();
 	float c = cos( e );
 	float s	= sin( e );
@@ -316,8 +321,6 @@ void ShadowMappingApp::draw()
 	
 	// Render light direction vector
 	gl::drawVector( mLight.viewpoint, 4.5f * normalize( mLight.viewpoint ) );
-	
-	mParams->draw();
 }
 
 void ShadowMappingApp::keyDown( KeyEvent event )
@@ -325,12 +328,14 @@ void ShadowMappingApp::keyDown( KeyEvent event )
 	if( event.getChar() == 'f' ) {
 		app::setFullScreen( !app::isFullScreen() );
 	}
-	else if( event.getChar() == KeyEvent::KEY_SPACE ) {
-		mParams->maximize( ! mParams->isMaximized() );
-	}
 }
 
-CINDER_APP( ShadowMappingApp, RendererGl( RendererGl::Options().msaa( 16 ) ), []( App::Settings *settings ) {
-//	settings->enableHighDensityDisplay();
+void prepareSettings( App::Settings *settings )
+{
+#if ! defined( CINDER_GL_ES )
+	//settings->enableHighDensityDisplay();
 	settings->setWindowSize( 900, 900 );
-} )
+#endif
+}
+
+CINDER_APP( ShadowMappingApp, RendererGl( RendererGl::Options().msaa( 16 ) ), prepareSettings )

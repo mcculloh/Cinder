@@ -26,12 +26,16 @@
 #include "cinder/app/Window.h"
 #include "cinder/app/AppBase.h"
 
-#if defined( CINDER_MSW )
+#if defined( CINDER_MSW_DESKTOP )
 	#include "cinder/app/msw/AppImplMsw.h"
-#elif defined( CINDER_WINRT )
+#elif defined( CINDER_UWP )
 	#include "cinder/app/winrt/WindowImplWinRt.h"
 #elif defined( CINDER_COCOA )
 	#include <Foundation/Foundation.h>
+#elif defined( CINDER_ANDROID )
+	#include "cinder/app/android/WindowImplAndroid.h"
+#elif defined( CINDER_LINUX )
+	#include "cinder/app/linux/WindowImplLinux.h"
 #endif
 
 namespace cinder { namespace app {
@@ -110,12 +114,19 @@ void Window::spanAllDisplays()
 	setPos( spanning.getUL() );
 }
 
+ivec2 Window::getMousePos() const
+{
+	return app::AppBase::get()->getMousePos() - getPos();
+}
+
 float Window::getContentScale() const
 {
 	testValid();
 	
 #if defined( CINDER_COCOA )
 	return [mImpl getContentScale];
+#elif defined( CINDER_MSW_DESKTOP )
+	return mImpl->getContentScale();
 #else
 	return 1.0f;
 #endif
@@ -261,7 +272,7 @@ void* Window::getNative() const
 #if defined( CINDER_COCOA )
 	return [mImpl getNative];
 #else
-	return mImpl->getNative();
+	return (void*)mImpl->getNative();
 #endif
 }
 
@@ -283,13 +294,15 @@ void Window::emitClose()
 
 void Window::emitMove()
 {
-	getRenderer()->makeCurrentContext( true );
+	applyCurrentContext();
+
 	mSignalMove.emit();
 }
 
 void Window::emitResize()
 {
-	getRenderer()->makeCurrentContext( true );
+	applyCurrentContext();
+
 	getRenderer()->defaultResize();
 	mSignalResize.emit();
 	getApp()->resize();
@@ -297,13 +310,14 @@ void Window::emitResize()
 
 void Window::emitDisplayChange()
 {
-	getRenderer()->makeCurrentContext( true );
+	applyCurrentContext();
+
 	mSignalDisplayChange.emit();
 }
 
 void Window::emitMouseDown( MouseEvent *event )
 {
-	getRenderer()->makeCurrentContext( true );
+	applyCurrentContext();
 
 	CollectorEvent<MouseEvent> collector( event );
 	mSignalMouseDown.emit( collector, *event );
@@ -313,7 +327,7 @@ void Window::emitMouseDown( MouseEvent *event )
 
 void Window::emitMouseDrag( MouseEvent *event )
 {
-	getRenderer()->makeCurrentContext( true );
+	applyCurrentContext();
 
 	CollectorEvent<MouseEvent> collector( event );
 	mSignalMouseDrag.emit( collector, *event );
@@ -323,7 +337,7 @@ void Window::emitMouseDrag( MouseEvent *event )
 
 void Window::emitMouseUp( MouseEvent *event )
 {
-	getRenderer()->makeCurrentContext( true );
+	applyCurrentContext();
 
 	CollectorEvent<MouseEvent> collector( event );
 	mSignalMouseUp.emit( collector, *event );
@@ -333,7 +347,7 @@ void Window::emitMouseUp( MouseEvent *event )
 
 void Window::emitMouseWheel( MouseEvent *event )
 {
-	getRenderer()->makeCurrentContext( true );
+	applyCurrentContext();
 
 	CollectorEvent<MouseEvent> collector( event );
 	mSignalMouseWheel.emit( collector, *event );
@@ -343,7 +357,7 @@ void Window::emitMouseWheel( MouseEvent *event )
 
 void Window::emitMouseMove( MouseEvent *event )
 {
-	getRenderer()->makeCurrentContext( true );
+	applyCurrentContext();
 
 	CollectorEvent<MouseEvent> collector( event );
 	mSignalMouseMove.emit( collector, *event );
@@ -353,7 +367,7 @@ void Window::emitMouseMove( MouseEvent *event )
 
 void Window::emitTouchesBegan( TouchEvent *event )
 {
-	getRenderer()->makeCurrentContext( true );
+	applyCurrentContext();
 
 	CollectorEvent<TouchEvent> collector( event );
 	mSignalTouchesBegan.emit( collector, *event );
@@ -363,7 +377,7 @@ void Window::emitTouchesBegan( TouchEvent *event )
 
 void Window::emitTouchesMoved( TouchEvent *event )
 {
-	getRenderer()->makeCurrentContext( true );
+	applyCurrentContext();
 
 	CollectorEvent<TouchEvent> collector( event );
 	mSignalTouchesMoved.emit( collector, *event );
@@ -373,7 +387,7 @@ void Window::emitTouchesMoved( TouchEvent *event )
 
 void Window::emitTouchesEnded( TouchEvent *event )
 {
-	getRenderer()->makeCurrentContext( true );
+	applyCurrentContext();
 
 	CollectorEvent<TouchEvent> collector( event );
 	mSignalTouchesEnded.emit( collector, *event );
@@ -388,16 +402,20 @@ const std::vector<TouchEvent::Touch>& Window::getActiveTouches() const
 	
 #if defined( CINDER_COCOA )
 	return [mImpl getActiveTouches];
-#elif defined( CINDER_MSW )
+#elif defined( CINDER_MSW_DESKTOP )
 	return mImpl->getActiveTouches();
-#elif defined( CINDER_WINRT )
+#elif defined( CINDER_UWP )
 	return mImpl->getActiveTouches();
+#elif defined( CINDER_ANDROID )
+	return mImpl->getActiveTouches();	
+#elif defined( CINDER_LINUX )
+	return mImpl->getActiveTouches();	
 #endif
 }
 
 void Window::emitKeyDown( KeyEvent *event )
 {
-	getRenderer()->makeCurrentContext( true );
+	applyCurrentContext();
 
 	CollectorEvent<KeyEvent> collector( event );
 	mSignalKeyDown.emit( collector, *event );
@@ -407,7 +425,7 @@ void Window::emitKeyDown( KeyEvent *event )
 
 void Window::emitKeyUp( KeyEvent *event )
 {
-	getRenderer()->makeCurrentContext( true );
+	applyCurrentContext();
 
 	CollectorEvent<KeyEvent> collector( event );
 	mSignalKeyUp.emit( collector, *event );
@@ -417,12 +435,7 @@ void Window::emitKeyUp( KeyEvent *event )
 
 void Window::emitDraw()
 {
-	// On the Mac the active GL Context can change behind our back in some scenarios; forcing the context switch on other platforms is expensive though
-#if defined( CINDER_MAC )
-	getRenderer()->makeCurrentContext( true );
-#else
-	getRenderer()->makeCurrentContext( false );
-#endif	
+	applyCurrentContext();
 	
 	mSignalDraw.emit();
 	getApp()->draw();
@@ -431,12 +444,22 @@ void Window::emitDraw()
 
 void Window::emitFileDrop( FileDropEvent *event )
 {
-	getRenderer()->makeCurrentContext( true );
+	applyCurrentContext();
 
 	CollectorEvent<FileDropEvent> collector( event );
 	mSignalFileDrop.emit( collector, *event );
 	if( ! event->isHandled() )
 		getApp()->fileDrop( *event );
+}
+
+void Window::applyCurrentContext()
+{
+	// On the Mac the active GL Context can change behind our back in some scenarios; forcing the context switch on other platforms is expensive though
+#if defined( CINDER_MAC )
+	getRenderer()->makeCurrentContext( true );
+#else
+	getRenderer()->makeCurrentContext( false );
+#endif
 }
 
 

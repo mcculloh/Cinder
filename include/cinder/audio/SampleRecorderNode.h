@@ -33,7 +33,7 @@ typedef std::shared_ptr<class SampleRecorderNode> SampleRecorderNodeRef;
 typedef std::shared_ptr<class BufferRecorderNode> BufferRecorderNodeRef;
 
 //! Base Node class for recording audio samples. Inherits from NodeAudioPullable, and therefore does not need to be connected to an output.
-class SampleRecorderNode : public NodeAutoPullable {
+class CI_API SampleRecorderNode : public NodeAutoPullable {
   public:
 	//! Returns the current write position, which represents how many samples are currently recorded.
 	size_t getWritePosition() const		{ return mWritePos; }
@@ -44,7 +44,7 @@ class SampleRecorderNode : public NodeAutoPullable {
 };
 
 //! Records its inputs to a Buffer.  The Buffer record size should be specified by the user (the default size is 44100 frames). Also supports writing the recorded samples to file.
-class BufferRecorderNode : public SampleRecorderNode {
+class CI_API BufferRecorderNode : public SampleRecorderNode {
   public:
 	BufferRecorderNode( const Format &format = Format() );
 	//! Constructs a BufferRecordNode and initializes its buffer to be large enough to hold \a numFrames frames.
@@ -77,7 +77,7 @@ class BufferRecorderNode : public SampleRecorderNode {
 	//!
 	//! The encoding format is derived from \a filePath's extension and \a sampleType (default = SampleType::INT_16).
 	//! \note throws AudioFileExc if the write request cannot be completed.
-	void writeToFile( const ci::fs::path &filePath, SampleType sampleType = SampleType::INT_16 );
+	void writeToFile( const cinder::fs::path &filePath, SampleType sampleType = SampleType::INT_16 );
 
 	//! Returns the frame of the last buffer overrun or 0 if none since the last time this method was called. When this happens, it means the recorded buffer probably has skipped some frames.
 	uint64_t getLastOverrun();

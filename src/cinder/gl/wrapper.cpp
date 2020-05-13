@@ -27,10 +27,15 @@
 #include "cinder/gl/scoped.h"
 #include "cinder/Log.h"
 
-#if defined( CINDER_MSW )
-	#include "glload/wgl_all.h"
+#if defined( CINDER_MSW ) && ! defined( CINDER_GL_ANGLE )
+	#include "glad/glad_wgl.h"
 #elif defined( CINDER_MAC )
 	#include <OpenGL/OpenGL.h>
+#elif defined( CINDER_LINUX )
+	#if ! defined( CINDER_LINUX_EGL_ONLY )
+		#include "glad/glad.h"
+		#include "glfw/glfw3.h"
+	#endif
 #endif
 
 using namespace std;
@@ -49,8 +54,13 @@ void enableVerticalSync( bool enable )
 	::CGLSetParameter( ::CGLGetCurrentContext(), kCGLCPSwapInterval, &sync );
 #elif defined( CINDER_MSW ) && ! defined( CINDER_GL_ANGLE )
 	GLint sync = ( enable ) ? 1 : 0;
-	if( wglext_EXT_swap_control )
+	if( WGL_EXT_swap_control )
 		::wglSwapIntervalEXT( sync );
+#elif defined( CINDER_LINUX )
+	#if ! defined( CINDER_LINUX_EGL_ONLY ) && ! defined( CINDER_HEADLESS_GL_OSMESA )
+		GLint sync = ( enable ) ? 1 : 0;
+		glfwSwapInterval( sync );
+	#endif
 #endif
 }
 
@@ -61,7 +71,7 @@ bool isVerticalSyncEnabled()
 	::CGLGetParameter( ::CGLGetCurrentContext(), kCGLCPSwapInterval, &enabled );
 	return enabled > 0;
 #elif defined( CINDER_MSW ) && ! defined( CINDER_GL_ANGLE )
-	if( wglext_EXT_swap_control )
+	if( WGL_EXT_swap_control )
 		return ::wglGetSwapIntervalEXT() > 0;
 	else
 		return true;
@@ -157,11 +167,24 @@ std::pair<GLint,GLint> getVersion()
 #endif
 }
 
+std::string getString( GLenum name )
+{
+	const GLubyte* s = glGetString( name );
+	
+	if( s )
+		return std::string( reinterpret_cast<const char*>( s ) );
+	else
+		return std::string();
+}
+
 std::string getVersionString()
 {
-	const GLubyte* s = glGetString( GL_VERSION );
+	return getString( GL_VERSION );
+}
 
-	return std::string( reinterpret_cast<const char*>( s ) );
+std::string getVendorString()
+{
+	return getString( GL_VENDOR );
 }
 
 GlslProgRef& getStockShader( const class ShaderDef &shader )
@@ -721,10 +744,12 @@ void patchParameteri( GLenum pname, GLint value )
 	glPatchParameteri( pname, value );
 }
 
+#if ! defined( CINDER_GL_ES )
 void patchParameterfv( GLenum pname, GLfloat *value )
 {
 	glPatchParameterfv( pname, value );
 }
+#endif 
 #endif // defined( CINDER_GL_HAS_TESS_SHADER )
 
 void color( float r, float g, float b )
@@ -953,7 +978,7 @@ void readPixels( GLint x, GLint y, GLsizei width, GLsizei height, GLenum format,
 }
 
 // Compute
-#if defined( CINDER_MSW ) && ! defined( CINDER_GL_ANGLE )
+#if defined( CINDER_GL_HAS_COMPUTE_SHADER )
 ivec3 getMaxComputeWorkGroupCount()
 {
 	ivec3 count;
@@ -971,8 +996,29 @@ ivec3 getMaxComputeWorkGroupSize()
 	glGetIntegeri_v( GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, &size.z );
 	return size;
 }
-#endif // defined( CINDER_MSW ) && ! defined( CINDER_GL_ANGLE )
+#endif // defined( CINDER_GL_HAS_COMPUTE_SHADER )
 
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+// debug groups
+#if defined( CINDER_GL_HAS_KHR_DEBUG )
+void pushDebugGroup( const std::string &message )
+{
+	glPushDebugGroup( GL_DEBUG_SOURCE_APPLICATION, 0, -1, message.c_str() );
+}
+void pushDebugGroup( GLuint id, const std::string &message )
+{
+	glPushDebugGroup( GL_DEBUG_SOURCE_APPLICATION, id, -1, message.c_str() );
+}
+void pushDebugGroup( GLenum source, GLuint id, const std::string &message )
+{
+	glPushDebugGroup( source, id, -1, message.c_str() );
+}
+void popDebugGroup()
+{
+	glPopDebugGroup();
+}
+#endif
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 // toGL conversion functions

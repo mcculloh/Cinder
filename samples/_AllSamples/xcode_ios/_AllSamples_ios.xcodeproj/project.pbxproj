@@ -13,6 +13,7 @@
 			buildPhases = (
 			);
 			dependencies = (
+				001FA1CF1D5D72770007DD5F /* PBXTargetDependency */,
 				004309C81BBCE52200B72510 /* PBXTargetDependency */,
 				004309CA1BBCE52200B72510 /* PBXTargetDependency */,
 				004309CC1BBCE52200B72510 /* PBXTargetDependency */,
@@ -39,7 +40,6 @@
 				004309F61BBCE52200B72510 /* PBXTargetDependency */,
 				004309F81BBCE52200B72510 /* PBXTargetDependency */,
 				004309FA1BBCE52200B72510 /* PBXTargetDependency */,
-				004309FC1BBCE52200B72510 /* PBXTargetDependency */,
 				004309FE1BBCE52200B72510 /* PBXTargetDependency */,
 				00430A001BBCE52200B72510 /* PBXTargetDependency */,
 				00D494F01988A30500A44E4C /* PBXTargetDependency */,
@@ -60,6 +60,20 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXContainerItemProxy section */
+		001FA1CC1D5D71E40007DD5F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 001FA1C81D5D71E30007DD5F /* MultiTouchBasic.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 1D6058910D05DD3D006BFB54;
+			remoteInfo = MultiTouchBasic;
+		};
+		001FA1CE1D5D72770007DD5F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 001FA1C81D5D71E30007DD5F /* MultiTouchBasic.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 1D6058900D05DD3D006BFB54;
+			remoteInfo = MultiTouchBasic;
+		};
 		004309531BBCE41700B72510 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 0043094F1BBCE41700B72510 /* Cube.xcodeproj */;
@@ -382,13 +396,6 @@
 			remoteGlobalIDString = 00692BCE14FF149000D0A05E;
 			remoteInfo = Renderer2d;
 		};
-		004309FB1BBCE52200B72510 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 00D4951D1988A3EA00A44E4C /* RetinaSample.xcodeproj */;
-			proxyType = 1;
-			remoteGlobalIDString = 00692BCE14FF149000D0A05E;
-			remoteInfo = RetinaSample;
-		};
 		004309FD1BBCE52200B72510 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 00D495231988A40A00A44E4C /* TextBox_iOS.xcodeproj */;
@@ -599,13 +606,6 @@
 			remoteGlobalIDString = 00692BCF14FF149000D0A05E;
 			remoteInfo = Renderer2d;
 		};
-		00D495211988A3EA00A44E4C /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 00D4951D1988A3EA00A44E4C /* RetinaSample.xcodeproj */;
-			proxyType = 2;
-			remoteGlobalIDString = 00692BCF14FF149000D0A05E;
-			remoteInfo = RetinaSample;
-		};
 		00D495271988A40B00A44E4C /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 00D495231988A40A00A44E4C /* TextBox_iOS.xcodeproj */;
@@ -620,9 +620,17 @@
 			remoteGlobalIDString = 1D6058910D05DD3D006BFB54;
 			remoteInfo = TextureFont;
 		};
+		00F0AA601FC4BAD300F9EBBE /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 00F0AA5C1FC4BAD300F9EBBE /* HighDensityDisplay.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 00692BCF14FF149000D0A05E;
+			remoteInfo = HighDensityDisplay;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		001FA1C81D5D71E30007DD5F /* MultiTouchBasic.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = MultiTouchBasic.xcodeproj; path = ../../MultiTouchBasic/xcode_ios/MultiTouchBasic.xcodeproj; sourceTree = "<group>"; };
 		0043094F1BBCE41700B72510 /* Cube.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = Cube.xcodeproj; path = ../../_opengl/Cube/xcode_ios/Cube.xcodeproj; sourceTree = "<group>"; };
 		004309551BBCE42100B72510 /* CubeMapping.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = CubeMapping.xcodeproj; path = ../../_opengl/CubeMapping/xcode_ios/CubeMapping.xcodeproj; sourceTree = "<group>"; };
 		0043095B1BBCE42F00B72510 /* DeferredShading.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = DeferredShading.xcodeproj; path = ../../_opengl/DeferredShading/xcode_ios/DeferredShading.xcodeproj; sourceTree = "<group>"; };
@@ -660,12 +668,20 @@
 		00D4950B1988A38900A44E4C /* NativeControls.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = NativeControls.xcodeproj; path = ../../iosNativeControls/xcode_ios/NativeControls.xcodeproj; sourceTree = "<group>"; };
 		00D495111988A3A700A44E4C /* Instascope.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = Instascope.xcodeproj; path = ../../Kaleidoscope/xcode_ios/Instascope.xcodeproj; sourceTree = "<group>"; };
 		00D495171988A3D200A44E4C /* Renderer2d.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = Renderer2d.xcodeproj; path = ../../Renderer2dBasic/xcode_ios/Renderer2d.xcodeproj; sourceTree = "<group>"; };
-		00D4951D1988A3EA00A44E4C /* RetinaSample.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = RetinaSample.xcodeproj; path = ../../RetinaSample/xcode_ios/RetinaSample.xcodeproj; sourceTree = "<group>"; };
 		00D495231988A40A00A44E4C /* TextBox_iOS.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = TextBox_iOS.xcodeproj; path = ../../TextBox/xcode_iOS/TextBox_iOS.xcodeproj; sourceTree = "<group>"; };
 		00D495291988A41F00A44E4C /* TextureFont.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = TextureFont.xcodeproj; path = ../../TextureFont/xcode_iOS/TextureFont.xcodeproj; sourceTree = "<group>"; };
+		00F0AA5C1FC4BAD300F9EBBE /* HighDensityDisplay.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = HighDensityDisplay.xcodeproj; path = ../../HighDensityDisplay/xcode_ios/HighDensityDisplay.xcodeproj; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
+		001FA1C91D5D71E30007DD5F /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				001FA1CD1D5D71E40007DD5F /* MultiTouch.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
 		0043094E1BBCE40300B72510 /* _opengl */ = {
 			isa = PBXGroup;
 			children = (
@@ -859,17 +875,18 @@
 				0043094E1BBCE40300B72510 /* _opengl */,
 				00D494D01988A2B300A44E4C /* _audio */,
 				009F6EA214C0FED70036C292 /* _timeline */,
+				001FA1C81D5D71E30007DD5F /* MultiTouchBasic.xcodeproj */,
 				00D494F91988A31F00A44E4C /* BezierPathIteration.xcodeproj */,
 				009709E416CC6AB4005DC014 /* CaptureBasic.xcodeproj */,
 				0087D25612CD80A7002CD69F /* ClipboardBasic_iOS.xcodeproj */,
 				00D494FF1988A35200A44E4C /* Compass.xcodeproj */,
+				00F0AA5C1FC4BAD300F9EBBE /* HighDensityDisplay.xcodeproj */,
 				00D495051988A37500A44E4C /* iosKeyboard.xcodeproj */,
 				00D495111988A3A700A44E4C /* Instascope.xcodeproj */,
 				00D4950B1988A38900A44E4C /* NativeControls.xcodeproj */,
 				009709EA16CC6AC1005DC014 /* LocationManager.xcodeproj */,
 				009545201680E9E4008ECA02 /* MotionBasic.xcodeproj */,
 				00D495171988A3D200A44E4C /* Renderer2d.xcodeproj */,
-				00D4951D1988A3EA00A44E4C /* RetinaSample.xcodeproj */,
 				00D495231988A40A00A44E4C /* TextBox_iOS.xcodeproj */,
 				00D495291988A41F00A44E4C /* TextureFont.xcodeproj */,
 				0087D32512CD828A002CD69F /* TextTest_iOS.xcodeproj */,
@@ -1032,14 +1049,6 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		00D4951E1988A3EA00A44E4C /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				00D495221988A3EA00A44E4C /* RetinaSample.app */,
-			);
-			name = Products;
-			sourceTree = "<group>";
-		};
 		00D495241988A40A00A44E4C /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -1056,6 +1065,14 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		00F0AA5D1FC4BAD300F9EBBE /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				00F0AA611FC4BAD300F9EBBE /* HighDensityDisplay.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXProject section */
@@ -1063,7 +1080,7 @@
 			isa = PBXProject;
 			attributes = {
 			};
-			buildConfigurationList = 0087D08912CD7DC5002CD69F /* Build configuration list for PBXProject "_AllSamples_iOS" */;
+			buildConfigurationList = 0087D08912CD7DC5002CD69F /* Build configuration list for PBXProject "_AllSamples_ios" */;
 			compatibilityVersion = "Xcode 2.4";
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
@@ -1121,6 +1138,10 @@
 					ProjectRef = 004309671BBCE44500B72510 /* FboBasic.xcodeproj */;
 				},
 				{
+					ProductGroup = 00F0AA5D1FC4BAD300F9EBBE /* Products */;
+					ProjectRef = 00F0AA5C1FC4BAD300F9EBBE /* HighDensityDisplay.xcodeproj */;
+				},
+				{
 					ProductGroup = 0043096E1BBCE45400B72510 /* Products */;
 					ProjectRef = 0043096D1BBCE45400B72510 /* HighDynamicRange.xcodeproj */;
 				},
@@ -1159,6 +1180,10 @@
 				{
 					ProductGroup = 004309861BBCE48200B72510 /* Products */;
 					ProjectRef = 004309851BBCE48200B72510 /* MotionBlurFbo.xcodeproj */;
+				},
+				{
+					ProductGroup = 001FA1C91D5D71E30007DD5F /* Products */;
+					ProjectRef = 001FA1C81D5D71E30007DD5F /* MultiTouchBasic.xcodeproj */;
 				},
 				{
 					ProductGroup = 00D4950C1988A38900A44E4C /* Products */;
@@ -1201,10 +1226,6 @@
 					ProjectRef = 00D495171988A3D200A44E4C /* Renderer2d.xcodeproj */;
 				},
 				{
-					ProductGroup = 00D4951E1988A3EA00A44E4C /* Products */;
-					ProjectRef = 00D4951D1988A3EA00A44E4C /* RetinaSample.xcodeproj */;
-				},
-				{
 					ProductGroup = 004309B01BBCE4E300B72510 /* Products */;
 					ProjectRef = 004309AF1BBCE4E300B72510 /* ShadowMappingBasic.xcodeproj */;
 				},
@@ -1245,6 +1266,13 @@
 /* End PBXProject section */
 
 /* Begin PBXReferenceProxy section */
+		001FA1CD1D5D71E40007DD5F /* MultiTouch.app */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.application;
+			path = MultiTouch.app;
+			remoteRef = 001FA1CC1D5D71E40007DD5F /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
 		004309541BBCE41700B72510 /* Cube.app */ = {
 			isa = PBXReferenceProxy;
 			fileType = wrapper.application;
@@ -1504,13 +1532,6 @@
 			remoteRef = 00D4951B1988A3D200A44E4C /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		00D495221988A3EA00A44E4C /* RetinaSample.app */ = {
-			isa = PBXReferenceProxy;
-			fileType = wrapper.application;
-			path = RetinaSample.app;
-			remoteRef = 00D495211988A3EA00A44E4C /* PBXContainerItemProxy */;
-			sourceTree = BUILT_PRODUCTS_DIR;
-		};
 		00D495281988A40B00A44E4C /* TextBox_iOS.app */ = {
 			isa = PBXReferenceProxy;
 			fileType = wrapper.application;
@@ -1525,9 +1546,21 @@
 			remoteRef = 00D4952D1988A41F00A44E4C /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
+		00F0AA611FC4BAD300F9EBBE /* HighDensityDisplay.app */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.application;
+			path = HighDensityDisplay.app;
+			remoteRef = 00F0AA601FC4BAD300F9EBBE /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
 /* End PBXReferenceProxy section */
 
 /* Begin PBXTargetDependency section */
+		001FA1CF1D5D72770007DD5F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = MultiTouchBasic;
+			targetProxy = 001FA1CE1D5D72770007DD5F /* PBXContainerItemProxy */;
+		};
 		004309C81BBCE52200B72510 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			name = TransformFeedbackSmokeParticles;
@@ -1658,11 +1691,6 @@
 			name = Renderer2d;
 			targetProxy = 004309F91BBCE52200B72510 /* PBXContainerItemProxy */;
 		};
-		004309FC1BBCE52200B72510 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			name = RetinaSample;
-			targetProxy = 004309FB1BBCE52200B72510 /* PBXContainerItemProxy */;
-		};
 		004309FE1BBCE52200B72510 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			name = TextBox_iOS;
@@ -1769,7 +1797,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		0087D08912CD7DC5002CD69F /* Build configuration list for PBXProject "_AllSamples_iOS" */ = {
+		0087D08912CD7DC5002CD69F /* Build configuration list for PBXProject "_AllSamples_ios" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				0087D08712CD7DC5002CD69F /* Debug */,

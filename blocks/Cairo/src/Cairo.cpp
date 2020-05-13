@@ -41,6 +41,13 @@
 #elif defined( CINDER_MSW )
 	#include "cinder/app/App.h"
 	#include <cairo-win32.h>
+
+FILE _iob[] = {*stdin, *stdout, *stderr};
+
+extern "C" FILE * __cdecl __iob_func(void)
+{
+    return _iob;
+}
 #endif
 
 using std::vector;
@@ -53,7 +60,7 @@ SurfaceChannelOrder SurfaceConstraintsCairo::getChannelOrder( bool alpha ) const
 	return ( alpha ) ? SurfaceChannelOrder::BGRA : SurfaceChannelOrder::BGRX;
 }
 
-int32_t	SurfaceConstraintsCairo::getRowBytes( int requestedWidth, const SurfaceChannelOrder &sco, int elementSize ) const {
+ptrdiff_t SurfaceConstraintsCairo::getRowBytes( int requestedWidth, const SurfaceChannelOrder &sco, int elementSize ) const {
 	return cairo_format_stride_for_width( sco.hasAlpha() ? CAIRO_FORMAT_ARGB32 : CAIRO_FORMAT_RGB24, requestedWidth );
 }
 
@@ -2041,7 +2048,7 @@ class SvgRendererCairo : public svg::Renderer {
 
 		mCtx.moveTo( mTextPenStack.back() );
 		// we can use a text path when the rotate is empty
-		if( abs(mTextRotationStack.back()) < 0.0001f ) {
+		if( fabs(mTextRotationStack.back()) < 0.0001f ) {
 			mCtx.textPath( span.getString() );
 			mTextPenStack.back() = mCtx.getCurrentPoint();
 		}
@@ -2100,7 +2107,7 @@ class SvgRendererCairo : public svg::Renderer {
 	}
 	
 	void	pushStyle( const svg::Style &style ) {}	
-	void	popStyle( const svg::Style &style ) {}
+	void	popStyle() {}
 	
 	void	pushStroke( const svg::Paint &paint ) { mStrokeStack.push_back( paint ); }
 	void	popStroke() { mStrokeStack.pop_back(); }

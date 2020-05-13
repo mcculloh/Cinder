@@ -24,40 +24,17 @@
 
 #pragma once
 
-#include "cinder/Cinder.h"
-
-
-#if defined( CINDER_WINRT ) || ( defined( _MSC_VER ) && ( _MSC_VER >= 1900 ) )
-	#include <filesystem>
-#else
-	#define BOOST_FILESYSTEM_VERSION 3
-	#define BOOST_FILESYSTEM_NO_DEPRECATED
-	#include <boost/filesystem.hpp>
+#if (defined(__cplusplus) && __cplusplus >= 201703L && defined(__has_include) && __has_include(<filesystem>)) || defined( _MSC_VER )
+		#define GHC_USE_STD_FS
+		#include <filesystem>
+		namespace cinder {
+			namespace fs = std::filesystem;
+		}
 #endif
 
-namespace cinder {
-#if defined( CINDER_WINRT ) || ( defined( _MSC_VER ) && ( _MSC_VER >= 1900 ) )
-	namespace fs = std::tr2::sys;
-} // namespace cinder
-#else
-	namespace fs = boost::filesystem;
-} // namespace cinder
-
-namespace boost {
-	namespace filesystem {
-		// C++17 filesystem library defines file_time_type, whereas boost::filesystem uses time_t
-		typedef std::time_t			file_time_type;
-	}
-}
-#endif
-
-#if defined( CINDER_WINRT ) || ( defined( _MSC_VER ) && ( _MSC_VER >= 1900 ) && ( _MSC_VER < 2000 ) )
-//! kludge to work around VC120's lack of fs::canonical
-namespace std { namespace tr2 { namespace sys {
-template <typename PathT>
-PathT canonical( const PathT &p )
-{
-	return p;
-}
-} } } // namespace std::tr2::sys
+#ifndef GHC_USE_STD_FS
+	#include <ghc/fs_fwd.hpp>
+	namespace cinder {
+		namespace fs = ghc::filesystem;
+	} 
 #endif

@@ -1,5 +1,5 @@
 /*
- Copyright (c) 2012, The Cinder Project
+ Copyright (c) 2018, The Cinder Project
  All rights reserved.
  
  This code is designed for use with the Cinder C++ library, http://libcinder.org
@@ -30,7 +30,7 @@
 #include "cinder/Utilities.h"
 
 #include <string>
-#include <boost/container/list.hpp>
+#include <list>
 
 namespace Json {
 	class Value;
@@ -38,11 +38,11 @@ namespace Json {
 
 namespace cinder {
 
-class JsonTree {
+class CI_API JsonTree {
   public:
 	
 	//! \cond
-	typedef boost::container::list<JsonTree> Container;
+	typedef std::list<JsonTree> Container;
 
 	typedef Container::const_iterator ConstIter;
 	typedef Container::iterator Iter;
@@ -52,7 +52,7 @@ class JsonTree {
 	enum NodeType	{ NODE_UNKNOWN, NODE_NULL, NODE_ARRAY, NODE_OBJECT, NODE_VALUE };
 
 	//! Options for JSON parsing. Passed to the JsonTree constructor.
-	class ParseOptions {
+	class CI_API ParseOptions {
 	  public:
 		//! Default options. Enables parsing errors.
 		ParseOptions();
@@ -70,7 +70,7 @@ class JsonTree {
 	};
 	
 	//! Options for JSON writing. Passed to the \c write method.
-	class WriteOptions {
+	class CI_API WriteOptions {
 	public:
 		//! Default options. Indents. Does not create root document.
 		WriteOptions();
@@ -154,7 +154,7 @@ class JsonTree {
 	//! Returns the child at \a index. Throws ExcChildNotFound if none matches.
 	const JsonTree&					operator[]( size_t index ) const;
 	//! Streams the JsonTree \a json to std::ostream \a out with standard formatting.
-	friend std::ostream&			operator<<( std::ostream &out, const JsonTree &json );
+	friend CI_API std::ostream&		operator<<( std::ostream &out, const JsonTree &json );
 	
 	/**! Returns the child at \a relativePath. Throws ExcChildNotFound if none matches. 
 		<br><tt>JsonTree node = myNode.getChild( "path.to.child" );</tt> **/
@@ -227,8 +227,8 @@ class JsonTree {
 	{
 		try {
 			return fromString<T>( mValue );
-		} catch ( boost::bad_lexical_cast &) {
-			throw ExcNonConvertible( * this );
+		} catch( ... ) {
+			throw ExcNonConvertible( *this );
 		}
 		return (T)0; // Unreachable. Prevents warning.
 	}
@@ -265,6 +265,8 @@ private:
 	
 	JsonTree*						getNodePtr( const std::string &relativePath, bool caseSensitive, char separator ) const;
 	static bool						isIndex( const std::string &key );
+
+	std::string						replaceAll( const std::string& text, const std::string& search, const std::string& replace ) const;
 	
 	Container						mChildren;
 	std::string						mKey;
@@ -279,12 +281,12 @@ private:
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	//! Base class for JsonTree exceptions.
-	class Exception : public cinder::Exception 
+	class CI_API Exception : public cinder::Exception 
 	{
 	};
 
 	//! Exception expressing the absence of an expected child node.
-	class ExcChildNotFound : public JsonTree::Exception {
+	class CI_API ExcChildNotFound : public JsonTree::Exception {
 	  public:
 		ExcChildNotFound( const JsonTree &node, const std::string &key ) throw();
 		virtual const char* what() const throw() 
@@ -297,7 +299,7 @@ private:
 	};
 
 	//! Exception expressing the inability to convert a node's value to a requested type.
-	class ExcNonConvertible : public JsonTree::Exception {
+	class CI_API ExcNonConvertible : public JsonTree::Exception {
 	  public:
 		ExcNonConvertible( const JsonTree &node ) throw();
 		virtual const char* what() const throw() 
@@ -310,7 +312,7 @@ private:
 	};
 
 	//! Exception expressing the existence of errors when serializing or deserializing JSON.
-	class ExcJsonParserError : public JsonTree::Exception {
+	class CI_API ExcJsonParserError : public JsonTree::Exception {
 	public:
 		ExcJsonParserError( const std::string &errorMessage ) throw();
 		virtual const char* what() const throw() 
@@ -324,6 +326,6 @@ private:
 
 };
 
-std::ostream&						operator<<( std::ostream &out, const JsonTree &json );
+CI_API std::ostream& operator<<( std::ostream &out, const JsonTree &json );
 
 } // namespace cinder

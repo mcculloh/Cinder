@@ -24,7 +24,6 @@
 
 #include "cinder/gl/Environment.h"
 #include "cinder/gl/platform.h"
-#include "glload/gl_load.h"
 #include "cinder/gl/Shader.h"
 #include "cinder/gl/Context.h"
 #include "cinder/gl/Vao.h"
@@ -38,9 +37,18 @@ class EnvironmentCore : public Environment {
   public:
 	void	initializeFunctionPointers() override;
 
-	bool	isExtensionAvailable( const std::string &extName ) override;
-	bool	supportsHardwareVao() override;
+	bool	isExtensionAvailable( const std::string &extName ) const override;
+
+	bool 	supportsFboMultiSample() const override;
+	bool 	supportsCoverageSample() const override;
+	bool	supportsHardwareVao() const override;
+	bool 	supportsInstancedArrays() const override;
 	bool	supportsTextureLod() const override;
+	bool	supportsGeometryShader() const override;
+	bool	supportsTessellationShader() const override;
+
+	GLenum	getPreferredIndexType() const override;
+
 	void	objectLabel( GLenum identifier, GLuint name, GLsizei length, const char *label ) override;
 
 	void	allocateTexStorage1d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, bool immutable, GLint texImageDataType ) override;
@@ -62,21 +70,20 @@ void EnvironmentCore::initializeFunctionPointers()
 {
 	static bool sInitialized = false;
 	if( ! sInitialized ) {
-		ogl_LoadFunctions();
-		sInitialized = true;
+		sInitialized = ( gladLoadGL() != 0 );
 	}
 }
 
-bool EnvironmentCore::isExtensionAvailable( const std::string &extName )
+bool EnvironmentCore::isExtensionAvailable( const std::string &extName ) const
 {	
 	static bool sInitialized = false;
 	static std::set<std::string> sExtensions;
 	if( ! sInitialized ) {
 		GLint loop;
-		GLint numExtensions = 0;
+		GLint numExtensions;
 		glGetIntegerv( GL_NUM_EXTENSIONS, &numExtensions );
 
-		for( loop = 0; loop < numExtensions; loop++) {
+		for( loop = 0 ;loop < numExtensions; loop++ ) {
 			std::string s = (const char *)glGetStringi( GL_EXTENSIONS, loop );
 			std::transform( s.begin(), s.end(), s.begin(), static_cast<int(*)(int)>( tolower ) );
 			sExtensions.insert( s );
@@ -91,7 +98,22 @@ bool EnvironmentCore::isExtensionAvailable( const std::string &extName )
 	return sExtensions.count( extension ) > 0;
 }
 
-bool EnvironmentCore::supportsHardwareVao()
+bool EnvironmentCore::supportsFboMultiSample() const
+{
+	return true;
+}
+
+bool EnvironmentCore::supportsCoverageSample() const
+{
+	return true;
+}
+
+bool EnvironmentCore::supportsHardwareVao() const
+{
+	return true;
+}
+
+bool EnvironmentCore::supportsInstancedArrays() const
 {
 	return true;
 }
@@ -99,6 +121,21 @@ bool EnvironmentCore::supportsHardwareVao()
 bool EnvironmentCore::supportsTextureLod() const
 {
 	return true;
+}
+
+bool EnvironmentCore::supportsGeometryShader() const
+{
+	return isExtensionAvailable( "GL_EXT_geometry_shader" );
+}
+
+bool EnvironmentCore::supportsTessellationShader() const
+{
+	return isExtensionAvailable( "GL_EXT_tessellation_shader" );
+}
+
+GLenum EnvironmentCore::getPreferredIndexType() const
+{
+	return GL_UNSIGNED_INT;
 }
 
 void EnvironmentCore::objectLabel( GLenum identifier, GLuint name, GLsizei length, const char *label )

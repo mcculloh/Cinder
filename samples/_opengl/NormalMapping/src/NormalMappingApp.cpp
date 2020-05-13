@@ -27,7 +27,7 @@ http://www.cgtrader.com/3d-models/character-people/fantasy/the-leprechaun-the-go
 #include "cinder/app/App.h"
 #include "cinder/app/RendererGl.h"
 #include "cinder/gl/gl.h"
-#include "cinder/params/Params.h"
+#include "cinder/CinderImGui.h"
 #include "cinder/Camera.h"
 #include "cinder/ImageIo.h"
 #include "cinder/CameraUi.h"
@@ -36,6 +36,13 @@ http://www.cgtrader.com/3d-models/character-people/fantasy/the-leprechaun-the-go
 #include "cinder/Timer.h"
 #include "cinder/TriMesh.h"
 #include "cinder/Log.h"
+
+#if defined( CINDER_ANDROID )
+  #include "cinder/android/CinderAndroid.h"
+  #include "cinder/app/android/AssetFileSystem.h"
+#endif
+
+
 
 #include "DebugMesh.h"
 
@@ -118,10 +125,6 @@ private:
 	bool				mShowNormalsAndTangents;
 
 	float				mTime;
-
-#if ! defined( CINDER_GL_ES )
-	params::InterfaceGlRef	mParams;
-#endif
 };
 
 void NormalMappingApp::setup()
@@ -193,6 +196,11 @@ void NormalMappingApp::setup()
 		quit();
 	}
 
+#if defined( CINDER_ANDROID )
+ci::app::android::AssetFileSystem_FILE* asset = ci::app::android::AssetFileSystem_fopen( "leprechaun.msh", 0 );
+console() << "Asset size: " << ci::app::android::AssetFileSystem_flength( asset ) << std::endl;
+#endif
+
 	// load mesh file and create missing data (normals, tangents) if necessary
 	try {
 		fs::path mshFile = getAssetPath( "leprechaun.msh" );
@@ -208,26 +216,8 @@ void NormalMappingApp::setup()
 		quit();
 	}
 
-	// create a parameter window, so we can toggle stuff
-	std::vector<std::string> viewmodes;
-	viewmodes.push_back( "Final" );
-	viewmodes.push_back( "Glossy" );
-	viewmodes.push_back( "Normals");
-	viewmodes.push_back( "Lighting" );
-	viewmodes.push_back( "Mesh" );
-
 #if ! defined( CINDER_GL_ES )
-	mParams = params::InterfaceGl::create( getWindow(), "Normal Mapping Demo", ivec2(340, 150) );
-	mParams->setOptions( "", "valueswidth=100" );
-
-	mParams->addParam( "Enable Normal Mapping", &mEnableNormalMap );
-	mParams->addParam( "Viewing Mode", viewmodes, (int*) &mViewMode );
-
-	mParams->addSeparator();
-
-	mParams->addParam( "Rotate Model", &mAutoRotate );
-	mParams->addParam( "Animate Light", &mAnimateLantern );
-	mParams->addParam( "Show Normals & Tangents", &mShowNormalsAndTangents );
+	ImGui::Initialize();
 #endif
 
 	mCamUi = CameraUi( &mCamera, getWindow(), -1 );
@@ -238,6 +228,22 @@ void NormalMappingApp::setup()
 
 void NormalMappingApp::update()
 {
+#if ! defined( CINDER_GL_ES )
+	static std::vector<std::string> viewmodes;
+	viewmodes.push_back( "Final" );
+	viewmodes.push_back( "Glossy" );
+	viewmodes.push_back( "Normals" );
+	viewmodes.push_back( "Lighting" );
+	viewmodes.push_back( "Mesh" );
+	ImGui::Begin( "Normal Mapping Demo" );
+	ImGui::Checkbox( "Enable Normal Mapping", &mEnableNormalMap );
+	ImGui::Combo( "Viewing Mode", (int*)&mViewMode, viewmodes );
+	ImGui::Separator();
+	ImGui::Checkbox( "Rotate Model", &mAutoRotate );
+	ImGui::Checkbox( "Animate Light", &mAnimateLantern );
+	ImGui::Checkbox( "Show Normals & Tangents", &mShowNormalsAndTangents );
+	ImGui::End();
+#endif
 	// keep track of time
 	float fElapsed = (float)getElapsedSeconds() - mTime;
 	mTime += fElapsed;
@@ -336,12 +342,6 @@ void NormalMappingApp::draw()
 
 		gl::popMatrices();
 
-		// render our parameter window
-#if ! defined( CINDER_GL_ES )
-		if( mParams )
-			mParams->draw();
-#endif
-
 		// render the copyright message
 		Area centered = Area::proportionalFit( mCopyrightMap->getBounds(), getWindowBounds(), true, false );
 		centered.offset( ivec2( 0, ( getWindowHeight() - centered.y2 ) - 20 ) );
@@ -370,13 +370,17 @@ TriMesh NormalMappingApp::createMesh( const fs::path& mshFile )
 	Timer	timer;
 
 	// try to load the msh file
+#if defined( CINDER_ANDROID )
+	if( ci::android::fs::exists( mshFile ) ) {
+#else
 	if( fs::exists( mshFile ) ) {
+#endif
 		timer.start();
 		mesh.read( loadFile( mshFile ) );
 		CI_LOG_I( "Loading the mesh took " << timer.getSeconds() << " seconds." );
 	}
 	else {
-		std::string msg = "Could not locate the file (" + mshFile.string() + ").";
+		std::string msg = "File does not exist (" + mshFile.string() + ")";
 		throw std::runtime_error( msg );
 	}
 

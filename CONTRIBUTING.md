@@ -47,6 +47,7 @@ Please make sure your code conforms to the following general guidelines. If some
   *  ex. `if( ! mEnabled ) { ...`
 * Brackets for class methods and functions begin on a new line. Brackets for everything else (class declarations, if / for / while loops, etc. ) begin on the same line following a space.
 * The contents of an `if`, `for`, or `while` statement should always be on a new line. This not only makes it easier to read but also prevents some ambiguities that come up in some debugging situations, where you can't tell if you've jumped into the body of the statement or not. 
+* `else` statements should be placed on a new line for vertical readability.
 
 #### Types
 
@@ -59,7 +60,7 @@ Please make sure your code conforms to the following general guidelines. If some
 
 * When an object doesn't have clear copy semantics (ex. a system resource or `gl::Texture`, inherit from `ci::Noncopyable` so it is obvious that the object cannot be copied.
 * When overriding a virtual method in a subclass, do not use the `virtual` keyword a second time, instead use `override`, which has the added benefit of the compiler checking that the override took place.
-* Unless it is templated or performance critical code, place method implementations in the .cpp to try to keep the header more consise. The exception to this rule is simple getters
+* Unless it is templated or performance critical code, place method implementations in the .cpp to try to keep the header more concise. The exception to this rule is simple getters
   *  ex. `getWidth() const   { return mWidth; }`.
 
 #### Comments
@@ -123,8 +124,13 @@ namespace cinder {
 SomeClass::SomeClass( int var1, int var2 )
 	: mVar1( var1 ), mVar2( var2 )
 {
-  if( var1 == var2 )
-    someMethod( var1, Rectf::zero() );
+	if( var1 == var2 ) {
+		someMethod( var1, Rectf::zero() );
+	}
+	else {
+		...
+		...
+	}
 }
 
 void SomeClass::someMethod( int argA, const Rectf &bounds )

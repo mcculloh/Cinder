@@ -40,6 +40,7 @@
 #endif
 #include <cxxabi.h>
 #include <execinfo.h>
+#include <pthread.h>
 
 using namespace std;
 
@@ -55,7 +56,6 @@ PlatformCocoa::PlatformCocoa()
 	
 	// This is necessary to force the linker not to strip these symbols from libboost_filesystem.a,
 	// which in turn would force users to explicitly link to that lib from their own apps.
-	auto dummy = boost::filesystem::unique_path();
 	auto dummy2 = fs::temp_directory_path();
 
 	// register default ImageSources and ImageTargets
@@ -361,6 +361,13 @@ vector<string> PlatformCocoa::stackTrace()
 	free( strs );
 	
 	return result;
+}
+
+void PlatformCocoa::setThreadName( const std::string &name )
+{
+	int result = pthread_setname_np( name.c_str() ); // under macOS, arbitrarily long strings appear to be acceptable
+	if( result != 0 )
+		CI_LOG_E( "setThreadName failed" );
 }
 
 void PlatformCocoa::addDisplay( const DisplayRef &display )

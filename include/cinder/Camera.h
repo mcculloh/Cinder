@@ -35,7 +35,7 @@ namespace cinder {
 class Sphere;
 
 //! Base Camera class, which manages the projection and view matrices for a 3-dimensional scene, as well as providing mapping functionality.
-class Camera {
+class CI_API Camera {
   public:
 	virtual ~Camera() {}
 
@@ -97,9 +97,9 @@ class Camera {
 	void	setFarClip( float farClip ) { mFarClip = farClip; mProjectionCached = false; }
 
 	//! Returns the four corners of the Camera's Near clipping plane, expressed in world-space
-	virtual void	getNearClipCoordinates( vec3 *topLeft, vec3 *topRight, vec3 *bottomLeft, vec3 *bottomRight ) const;
+	virtual void	getNearClipCoordinates( vec3 *topLeft, vec3 *topRight, vec3 *bottomLeft, vec3 *bottomRight ) const { return getClipCoordinates( mNearClip, 1.0f, topLeft, topRight, bottomLeft, bottomRight ); }
 	//! Returns the four corners of the Camera's Far clipping plane, expressed in world-space
-	virtual void	getFarClipCoordinates( vec3 *topLeft, vec3 *topRight, vec3 *bottomLeft, vec3 *bottomRight ) const;
+	virtual void	getFarClipCoordinates( vec3 *topLeft, vec3 *topRight, vec3 *bottomLeft, vec3 *bottomRight ) const { getClipCoordinates( mFarClip, mFarClip / mNearClip, topLeft, topRight, bottomLeft, bottomRight ); }
 
 	//! Returns the coordinates of the camera's frustum, suitable for passing to \c glFrustum
 	void	getFrustum( float *left, float *top, float *right, float *bottom, float *near, float *far ) const;
@@ -138,9 +138,11 @@ class Camera {
 
   protected:
 	Camera()
-		: mModelViewCached( false ), mProjectionCached( false ), mInverseModelViewCached( false ), mWorldUp( vec3( 0, 1, 0 ) ),
-			mPivotDistance( 0 )
-	{}
+		: mWorldUp( vec3( 0, 1, 0 ) ), mFov( 35 ), mAspectRatio( 1 ), mNearClip( 0.1f ), mFarClip( 1000 )
+		, mPivotDistance( 1 ), mProjectionCached( false ), mModelViewCached( false ), mInverseModelViewCached( false )
+		, mFrustumLeft( -1 ), mFrustumRight( 1 ), mFrustumTop( 1 ), mFrustumBottom( -1 )
+	{
+	}
 
 	void			calcMatrices() const;
 
@@ -148,7 +150,9 @@ class Camera {
 	virtual void	calcInverseView() const;
 	virtual void	calcProjection() const = 0;
 
-	virtual Ray		calcRay( float u, float v, float imagePlaneAspectRatio ) const;
+	virtual Ray		calcRay( float u, float v, float imagePlaneAspectRatio ) const = 0;
+
+	void			getClipCoordinates( float clipDist, float ratio, vec3* topLeft, vec3* topRight, vec3* bottomLeft, vec3* bottomRight ) const;
 
 	vec3	mEyePoint;
 	vec3	mViewDirection;
@@ -176,7 +180,7 @@ class Camera {
 };
 
 //! A perspective Camera.
-class CameraPersp : public Camera {
+class CI_API CameraPersp : public Camera {
   public:
 	//! Creates a default camera with eyePoint at ( 28, 21, 28 ), looking at the origin, 35deg vertical field-of-view and a 1.333 aspect ratio.
 	CameraPersp();
@@ -220,6 +224,8 @@ class CameraPersp : public Camera {
 	//! Returns a Camera whose eyePoint is positioned to exactly frame \a worldSpaceSphere but is equivalent in other parameters (including orientation). Sets the result's pivotDistance to be the distance to \a worldSpaceSphere's center.
 	CameraPersp		calcFraming( const Sphere &worldSpaceSphere ) const;
 
+	//! Returns a subdivided portion of this camera's view frustrum as a new CameraPersp; useful for multi-gpu or tiled-rendering for instance.
+	CameraPersp		subdivide( const glm::uvec2& gridSize, const glm::uvec2& gridIndex ) const;
   protected:
 	vec2	mLensShift;
 
@@ -228,7 +234,7 @@ class CameraPersp : public Camera {
 };
 
 //! An orthographic Camera.
-class CameraOrtho : public Camera {
+class CI_API CameraOrtho : public Camera {
   public:
 	CameraOrtho();
 	CameraOrtho( float left, float right, float bottom, float top, float nearPlane, float farPlane );
@@ -236,13 +242,17 @@ class CameraOrtho : public Camera {
 	void	setOrtho( float left, float right, float bottom, float top, float nearPlane, float farPlane );
 
 	bool	isPersp() const override { return false; }
-	
+
+	void	getNearClipCoordinates( vec3 *topLeft, vec3 *topRight, vec3 *bottomLeft, vec3 *bottomRight ) const override { getClipCoordinates( mNearClip, 1.0f, topLeft, topRight, bottomLeft, bottomRight ); }
+	void	getFarClipCoordinates( vec3 *topLeft, vec3 *topRight, vec3 *bottomLeft, vec3 *bottomRight ) const override { getClipCoordinates( mFarClip, 1.0f, topLeft, topRight, bottomLeft, bottomRight ); }
+
   protected:
 	void	calcProjection() const override;
+	Ray		calcRay( float u, float v, float imagePlaneAspectRatio ) const override;
 };
 
 //! A Camera used for stereoscopic displays.
-class CameraStereo : public CameraPersp {
+class CI_API CameraStereo : public CameraPersp {
   public:
 	CameraStereo() 
 		: mConvergence( 1.0f ), mEyeSeparation( 0.05f ), mIsStereo( false ), mIsLeft( true ) {}
@@ -278,8 +288,8 @@ class CameraStereo : public CameraPersp {
 	//! Returns whether stereoscopic rendering is enabled.
 	bool			isStereoEnabled() const { return mIsStereo; }
 
-	void	getNearClipCoordinates( vec3 *topLeft, vec3 *topRight, vec3 *bottomLeft, vec3 *bottomRight ) const override;
-	void	getFarClipCoordinates( vec3 *topLeft, vec3 *topRight, vec3 *bottomLeft, vec3 *bottomRight ) const override;
+	void getNearClipCoordinates( vec3 *topLeft, vec3 *topRight, vec3 *bottomLeft, vec3 *bottomRight ) const override { return getShiftedClipCoordinates( mNearClip, 1.0f, topLeft, topRight, bottomLeft, bottomRight ); }
+	void getFarClipCoordinates( vec3 *topLeft, vec3 *topRight, vec3 *bottomLeft, vec3 *bottomRight ) const override { return getShiftedClipCoordinates( mFarClip, mFarClip / mNearClip, topLeft, topRight, bottomLeft, bottomRight ); }
 	
 	const mat4&	getProjectionMatrix() const override;
 	const mat4&	getViewMatrix() const override;
@@ -294,6 +304,8 @@ class CameraStereo : public CameraPersp {
 	void	calcViewMatrix() const override;
 	void	calcInverseView() const override;
 	void	calcProjection() const override;
+
+	void	getShiftedClipCoordinates( float clipDist, float ratio, vec3* topLeft, vec3* topRight, vec3* bottomLeft, vec3* bottomRight ) const;
 	
   private:
 	bool			mIsStereo;

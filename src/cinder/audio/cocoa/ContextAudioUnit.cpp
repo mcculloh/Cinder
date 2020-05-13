@@ -142,19 +142,23 @@ OSStatus OutputDeviceNodeAudioUnit::renderCallback( void *data, ::AudioUnitRende
 
 	OutputDeviceNodeAudioUnit *outputDeviceNode = static_cast<OutputDeviceNodeAudioUnit *>( renderData->node );
 	Buffer *internalBuffer = outputDeviceNode->getInternalBuffer();
-	internalBuffer->zero();
 
 	renderData->context->setCurrentTimeStamp( timeStamp );
-	ctx->preProcess();
-	outputDeviceNode->pullInputs( internalBuffer );
 
-	// if clip detection is enabled and buffer clipped, silence it
-	if( outputDeviceNode->checkNotClipping() )
-		zeroBufferList( bufferList );
-	else
-		copyToBufferList( bufferList, internalBuffer );
+	for( size_t startFrame = 0; startFrame < numFrames; startFrame += internalBuffer->getNumFrames() ) {
+		internalBuffer->zero();
 
-	ctx->postProcess();
+		ctx->preProcess();
+		outputDeviceNode->pullInputs( internalBuffer );
+
+		// if clip detection is enabled and buffer clipped, silence it
+		if( outputDeviceNode->checkNotClipping() )
+			zeroBufferList( bufferList, startFrame, internalBuffer->getNumFrames() );
+		else
+			copyToBufferList( bufferList, internalBuffer, startFrame, internalBuffer->getNumFrames() );
+
+		ctx->postProcess();
+	}
 
 	return noErr;
 }
@@ -164,7 +168,7 @@ OSStatus OutputDeviceNodeAudioUnit::renderCallback( void *data, ::AudioUnitRende
 // ----------------------------------------------------------------------------------------------------
 
 InputDeviceNodeAudioUnit::InputDeviceNodeAudioUnit( const DeviceRef &device, const Format &format )
-	: InputDeviceNode( device, format ), mSynchronousIO( false ), mRingBufferPaddingFactor( 2 )
+	: InputDeviceNode( device, format ), mSynchronousIO( false )
 {
 }
 
@@ -237,7 +241,7 @@ void InputDeviceNodeAudioUnit::initialize()
 				mConverter = audio::dsp::Converter::create( device->getSampleRate(), sampleRate, getNumChannels(), getNumChannels(), framesPerBlock );
 				mReadBuffer.setSize( framesPerBlock, getNumChannels() );
 				mConvertedReadBuffer.setSize( mConverter->getDestMaxFramesPerBlock(), getNumChannels() );
-				mRingBuffer.resize( mConverter->getDestMaxFramesPerBlock() * getNumChannels() * mRingBufferPaddingFactor );
+				mRingBuffer.resize( mConverter->getDestMaxFramesPerBlock() * getNumChannels() * getRingBufferPaddingFactor() );
 
 				asbd = createFloatAsbd( device->getSampleRate(), getNumChannels() );
 
@@ -253,7 +257,7 @@ void InputDeviceNodeAudioUnit::initialize()
 		}
 		else {
 			mBufferList = createNonInterleavedBufferList( framesPerBlock, getNumChannels() );
-			mRingBuffer.resize( framesPerBlock * getNumChannels() * mRingBufferPaddingFactor );
+			mRingBuffer.resize( framesPerBlock * getNumChannels() * getRingBufferPaddingFactor() );
 		}
 
 		::AURenderCallbackStruct callbackStruct = { InputDeviceNodeAudioUnit::inputCallback, &mRenderData };

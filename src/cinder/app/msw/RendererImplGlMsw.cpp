@@ -23,12 +23,12 @@
 
 #if ! defined( CINDER_GL_ANGLE )
 #include "cinder/gl/platform.h"
+#include "cinder/app/msw/AppImplMsw.h"
 #include "cinder/app/msw/RendererImplGlMsw.h"
 #include "cinder/app/RendererGl.h"
 #include "cinder/gl/Context.h"
 #include "cinder/gl/Environment.h"
-#include "glload/wgl_all.h"
-#include "glload/wgl_load.h"
+#include "glad/glad_wgl.h"
 #include "cinder/app/AppBase.h"
 #include "cinder/Camera.h"
 #include "cinder/Log.h"
@@ -58,17 +58,19 @@ void RendererImplGlMsw::finishToggleFullScreen()
 void RendererImplGlMsw::defaultResize() const
 {
 	::RECT clientRect;
-	::GetClientRect( mWnd, &clientRect );
-	int width = clientRect.right - clientRect.left;
-	int height = clientRect.bottom - clientRect.top;
+	::GetClientRect( mWindowImpl->getHwnd(), &clientRect );
+	int widthPx = clientRect.right - clientRect.left;
+	int heightPx = clientRect.bottom - clientRect.top;
 
-	gl::viewport( 0, 0, width, height );
-	gl::setMatricesWindow( width, height );
+	ivec2 sizePt = mWindowImpl->getSize();
+
+	gl::viewport( 0, 0, widthPx, heightPx );
+	gl::setMatricesWindow( sizePt.x, sizePt.y );
 }
 
 void RendererImplGlMsw::swapBuffers() const
 {
-	::SwapBuffers( mDC );
+	::SwapBuffers( mWindowImpl->getDc() );
 }
 
 void RendererImplGlMsw::makeCurrentContext( bool force )
@@ -177,7 +179,7 @@ bool getWglFunctionPointers( PFNWGLCREATECONTEXTATTRIBSARB *resultCreateContextA
 	}
 }
 
-HGLRC createContext( HDC dc, bool coreProfile, bool debug, int majorVersion, int minorVersion )
+HGLRC createContext( HDC dc, bool coreProfile, bool debug, int majorVersion, int minorVersion, GLenum multigpu = 0 )
 {
 	HGLRC result = 0;
 	static bool initializedLoadOGL = false;
@@ -190,9 +192,13 @@ HGLRC createContext( HDC dc, bool coreProfile, bool debug, int majorVersion, int
 			WGL_CONTEXT_MINOR_VERSION_ARB, minorVersion,
 			WGL_CONTEXT_FLAGS_ARB, (debug) ? WGL_CONTEXT_DEBUG_BIT_ARB : 0,
 			WGL_CONTEXT_PROFILE_MASK_ARB, (coreProfile) ? WGL_CONTEXT_CORE_PROFILE_BIT_ARB : WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB,
-			0, 0
+			0, 0,
+			0
 		};
- 
+		if( multigpu != 0 ) {
+			attribList[8] = WGL_CONTEXT_MULTIGPU_ATTRIB_NV;
+			attribList[9] = multigpu;
+		} 
 		result = (*wglCreateContextAttribsARBPtr)( dc, 0, attribList );
 		return result;
 	}
@@ -258,12 +264,27 @@ FOUND:
 	return true;
 }
 
-bool initializeGl( HWND wnd, HDC dc, HGLRC sharedRC, const RendererGl::Options &options, HGLRC *resultRc )
+GLenum getMultiGpuContextMode( const app::RendererGl::Options::MultiGpuModeNV& mode ) {
+	switch( mode ) {
+	case RendererGl::Options::MultiGpuModeNV::SINGLE: return WGL_CONTEXT_MULTIGPU_ATTRIB_SINGLE_NV; break;
+	case RendererGl::Options::MultiGpuModeNV::AFR: return WGL_CONTEXT_MULTIGPU_ATTRIB_AFR_NV; break;
+	case RendererGl::Options::MultiGpuModeNV::MULTICAST: return WGL_CONTEXT_MULTIGPU_ATTRIB_MULTICAST_NV; break;
+	case RendererGl::Options::MultiGpuModeNV::MULTI_DISPLAY_MULTICAST: return WGL_CONTEXT_MULTIGPU_ATTRIB_MULTI_DISPLAY_MULTICAST_NV; break;
+	default: return 0;
+	}
+}
+
+bool initializeGl( HWND /*wnd*/, HDC dc, HGLRC sharedRC, const RendererGl::Options &options, HGLRC *resultRc )
 {
 	if( ! setPixelFormat( dc, options ) )
 		throw ExcRendererAllocation( "Failed to find suitable WGL pixel format" );
 
-	if( ! ( *resultRc = createContext( dc, options.getCoreProfile(), options.getDebug(), options.getVersion().first, options.getVersion().second ) ) ) {
+	GLenum multigpu = 0;
+	if( options.isMultiGpuEnabledNV() ) {
+		multigpu = getMultiGpuContextMode( options.getMultiGpuModeNV() );
+	}
+
+	if( ! ( *resultRc = createContext( dc, options.getCoreProfile(), options.getDebug(), options.getVersion().first, options.getVersion().second, multigpu ) ) ) {
 		return false;								
 	}
 
@@ -274,7 +295,7 @@ bool initializeGl( HWND wnd, HDC dc, HGLRC sharedRC, const RendererGl::Options &
 	gl::Environment::setCore();
 	gl::env()->initializeFunctionPointers();
 
-	wgl_LoadFunctions( dc );								// Initialize WGL function pointers
+	gladLoadWGL( dc );											// Initialize WGL function pointers
 
 	::wglMakeCurrent( NULL, NULL );
 	
@@ -287,24 +308,29 @@ bool initializeGl( HWND wnd, HDC dc, HGLRC sharedRC, const RendererGl::Options &
 }
 } // anonymous namespace
 
-bool RendererImplGlMsw::initialize( HWND wnd, HDC dc, RendererRef sharedRenderer )
+bool RendererImplGlMsw::initialize( WindowImplMsw *windowImpl, RendererRef sharedRenderer )
 {
-	mWnd = wnd;
-	mDC = dc;
+	mWindowImpl = windowImpl;
 
 	RendererGl *sharedRendererGl = dynamic_cast<RendererGl*>( sharedRenderer.get() );
 	HGLRC sharedRC = ( sharedRenderer ) ? sharedRendererGl->mImpl->mRC : NULL;
 
-	if( ! initializeGl( wnd, dc, sharedRC, mRenderer->getOptions(), &mRC ) ) {
+	if( ! initializeGl( mWindowImpl->getHwnd(), mWindowImpl->getDc(), sharedRC, mRenderer->getOptions(), &mRC ) ) {
 		return false;
 	}
 
 	gl::Environment::setCore();
-	auto platformData = std::shared_ptr<gl::Context::PlatformData>( new gl::PlatformDataMsw( mRC, mDC ) );
+	auto platformData = std::shared_ptr<gl::Context::PlatformData>( new gl::PlatformDataMsw( mRC, mWindowImpl->getDc() ) );
 	platformData->mDebug = mRenderer->getOptions().getDebug();
 	platformData->mDebugLogSeverity = mRenderer->getOptions().getDebugLogSeverity();
 	platformData->mDebugBreakSeverity = mRenderer->getOptions().getDebugBreakSeverity();
 	platformData->mObjectTracking = mRenderer->getOptions().getObjectTracking();
+	platformData->mCoreProfile = mRenderer->getOptions().getCoreProfile();
+	platformData->mVersion = mRenderer->getOptions().getVersion();
+#if ! defined( CINDER_GL_ES )
+	platformData->mMultiGpuEnabledNV = mRenderer->getOptions().isMultiGpuEnabledNV();
+	platformData->mMultiGpuModeNV = getMultiGpuContextMode( mRenderer->getOptions().getMultiGpuModeNV() );
+#endif
 	mCinderContext = gl::Context::createFromExisting( platformData );
 	mCinderContext->makeCurrent();
 

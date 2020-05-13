@@ -6,7 +6,9 @@
 #include "cinder/ImageIo.h"
 #include "cinder/Utilities.h"
 #include "cinder/Font.h"
-#include "cinder/params/Params.h"
+#if ! defined( CINDDER_GL_ES )
+	#include "cinder/CinderImGui.h"
+#endif
 #include "cinder/Rand.h"
 
 using namespace ci;
@@ -28,14 +30,12 @@ class ExtrudeApp : public App {
 	gl::BatchRef			mBatch, mNormalsBatch;
 	gl::BatchRef			mSplineBatch;
 	gl::GlslProgRef			mGlsl;
-	Font					mFont;
+	ci::Font				mFont;
 	mat4					mRotation;
 	char					mCurrentChar;
 	float					mApproximation, mDepth;
 	int						mSubdivisions;
 	BSpline3f				mSpline;
-	
-	params::InterfaceGlRef	mParams;
 };
 
 void ExtrudeApp::setup()
@@ -51,20 +51,15 @@ void ExtrudeApp::setup()
 	mApproximation = 2.5f;
 	mDepth = 2.2f;
 	mSubdivisions = 30;
-	mParams = params::InterfaceGl::create( getWindow(), "App parameters", toPixels( ivec2( 200, 400 ) ) );
-	mParams->addParam( "Approximation", &mApproximation ).min( 0.1f ).max( 20.0f ).step( 0.1f ).updateFn( [=] { makeGeom(); } );
-	mParams->addParam( "Depth", &mDepth ).min( 0.01f ).max( 7.0f ).step( 0.25f ).updateFn( [=] { makeGeom(); } );
-	mParams->addParam( "Subdivisions", &mSubdivisions ).min( 1 ).max( 30 ).updateFn( [=] { makeGeom(); } );
-	mParams->addParam( "Spline", &mUseSpline ).updateFn( [=] { makeGeom(); } );
-	mParams->addParam( "Caps", &mCaps ).updateFn( [=] { makeGeom(); } );
-	mParams->addParam( "Wireframe", &mDrawWireframe ).updateFn( [=] { makeGeom(); } );
-	mParams->addParam( "Draw Normals", &mDrawNormals ).updateFn( [=] { makeGeom(); } );
+#if ! defined( CINDER_GL_ES )
+	ImGui::Initialize();
+#endif
 
 	mCam.lookAt( vec3( 30, 20, 40 ), vec3( 0 ) );
 
 	mGlsl = gl::getStockShader( gl::ShaderDef().color().lambert() );
 	
-	mFont = Font( "Georgia", 32 );
+	mFont = ci::Font( "Georgia", 32 );
 	mCurrentChar = '&';
 	randomSpline();
 	makeGeom();
@@ -128,6 +123,21 @@ void ExtrudeApp::resize()
 
 void ExtrudeApp::update()
 {
+#if ! defined( CINDER_GL_ES )
+	ImGui::Begin( "App Parameters " );
+	bool changed = false;
+	changed |= ImGui::DragFloat( "Approximation", &mApproximation, 0.1f, 0.1f, 20.0f );
+	changed |= ImGui::DragFloat( "Depth", &mDepth, 0.25f, 0.01f, 7.0f );
+	changed |= ImGui::DragInt( "Subdivisions", &mSubdivisions, 1, 1, 30 );
+	changed |= ImGui::Checkbox( "Spline", &mUseSpline );
+	changed |= ImGui::Checkbox( "Caps", &mCaps );
+	changed |= ImGui::Checkbox( "Wireframe", &mDrawWireframe );
+	changed |= ImGui::Checkbox( "Draw Normals", &mDrawNormals );
+	ImGui::End();
+	if( changed ) {
+		makeGeom();
+	}
+#endif
 	// Rotate the cube by 2 degrees around an arbitrary axis
 	mRotation *= rotate( toRadians( 0.8f ), normalize( vec3( sin( getElapsedSeconds() * 0.5 ), 1, -0.3 ) ) );
 }
@@ -140,10 +150,14 @@ void ExtrudeApp::draw()
 	gl::pushMatrices();
 		gl::multModelMatrix( mRotation );
 		gl::color( Color( 1, 1, 1 ) );
+#if defined( CINDER_GL_ES )
+		mBatch->draw();
+#else
 		if( mDrawWireframe )
 			gl::enableWireframe();
 		mBatch->draw();
 		gl::disableWireframe();
+#endif
 		gl::color( Color( 1.0f, 0.5f, 0.25f ) );
 		if( mDrawNormals && mNormalsBatch )
 			mNormalsBatch->draw();
@@ -153,8 +167,6 @@ void ExtrudeApp::draw()
 			gl::enableDepthRead();
 		}
 	gl::popMatrices();
-	
-	mParams->draw();
 }
 
 CINDER_APP( ExtrudeApp, RendererGl )

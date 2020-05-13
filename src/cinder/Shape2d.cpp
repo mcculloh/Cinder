@@ -1,5 +1,5 @@
 /*
- Copyright (c) 2010, The Barbarian Group
+ Copyright (c) 2010, The Cinder Project
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -63,13 +63,20 @@ void Shape2d::arcTo( const vec2 &p, const vec2 &t, float radius )
 
 void Shape2d::close()
 {
-	mContours.back().close();
+	if( ! mContours.empty() )
+		mContours.back().close();
 }
 
 void Shape2d::append( const Shape2d &shape )
 {
 	for( vector<Path2d>::const_iterator pathIt = shape.getContours().begin(); pathIt != shape.getContours().end(); ++pathIt )
 		appendContour( *pathIt );
+}
+
+void Shape2d::translate( const vec2 &offset )
+{
+	for( vector<Path2d>::iterator contIt = mContours.begin(); contIt != mContours.end(); ++contIt )
+		contIt->translate( offset );
 }
 
 void Shape2d::scale( const vec2 &amount, vec2 scaleCenter )
@@ -132,15 +139,60 @@ Rectf Shape2d::calcPreciseBoundingBox() const
 	return result;
 }
 
-bool Shape2d::contains( const vec2 &pt ) const
+float Shape2d::calcDistance( const vec2 &pt ) const
 {
-	int numPathsInside = 0;
+	float distance = FLT_MAX;
 	for( vector<Path2d>::const_iterator contIt = mContours.begin(); contIt != mContours.end(); ++contIt ) {
-		if( contIt->contains( pt ) )
-			numPathsInside++;
+		distance = math<float>::min( distance, contIt->calcDistance( pt ) );
 	}
+
+	return distance;
+}
+
+float Shape2d::calcSignedDistance( const vec2 &pt, bool evenOddFill ) const
+{
+	if( contains( pt, evenOddFill ) )
+		return -calcDistance( pt );
+	else
+		return calcDistance( pt );
+}
+
+
+vec2 Shape2d::calcClosestPoint( const vec2 &pt ) const
+{
+	vec2 result;
+	float distance2 = FLT_MAX;
+
+	for( vector<Path2d>::const_iterator contIt = mContours.begin(); contIt != mContours.end(); ++contIt ) {
+		vec2 p = contIt->calcClosestPoint( pt );
+		float d = glm::distance2( pt, p );
+		if( d < distance2 ) {
+			result = p;
+			distance2 = d;
+		}
+	}
+
+	return result;
+}
+
+bool Shape2d::contains( const vec2 &pt, bool evenOddFill ) const
+{
+	int w = 0;
+	int onCurveCount = 0;
+	for( auto &cont : mContours )
+		w += cont.calcWinding( pt, &onCurveCount );
 	
-	return ( numPathsInside % 2 ) == 1;
+	if( evenOddFill )
+		w &= 1;
+	if( w )
+		return true;
+		
+	if( onCurveCount <= 1 )
+		return onCurveCount > 0;
+	if( (onCurveCount & 1) || evenOddFill )
+		return (onCurveCount & 1) > 0;
+	
+	return false;
 }
 
 } // namespace cinder

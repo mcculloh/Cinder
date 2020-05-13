@@ -6,10 +6,10 @@
  Redistribution and use in source and binary forms, with or without modification, are permitted provided that
  the following conditions are met:
 
-    * Redistributions of source code must retain the above copyright notice, this list of conditions and
-	the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and
-	the following disclaimer in the documentation and/or other materials provided with the distribution.
+	* Redistributions of source code must retain the above copyright notice, this list of conditions and
+	   the following disclaimer.
+	* Redistributions in binary form must reproduce the above copyright notice, this list of conditions and
+	   the following disclaimer in the documentation and/or other materials provided with the distribution.
 
  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
@@ -34,7 +34,7 @@
 		class RendererImplGlMac;
 		class NSOpenGLContext;
 	#endif
-	typedef struct _CGLContextObject       *CGLContextObj;
+	typedef struct _CGLContextObject	   *CGLContextObj;
 	typedef struct _CGLPixelFormatObject   *CGLPixelFormatObj;
 #elif defined( CINDER_COCOA_TOUCH )
 	#if defined __OBJC__
@@ -46,6 +46,8 @@
 		class RendererImplGlCocoaTouch;
 		class EAGLContext;
 	#endif
+#elif defined( CINDER_LINUX )
+	typedef struct GLFWwindow	GLFWwindow;
 #endif
 
 namespace cinder { namespace gl {
@@ -58,9 +60,9 @@ typedef std::shared_ptr<Context>		ContextRef;
 namespace cinder { namespace app {
 
 typedef std::shared_ptr<class RendererGl>	RendererGlRef;
-class RendererGl : public Renderer {
+class CI_API RendererGl : public Renderer {
   public:
-	struct Options {
+	struct CI_API Options {
 	  public:
 		Options() {
 #if defined( CINDER_COCOA_TOUCH )
@@ -70,12 +72,14 @@ class RendererGl : public Renderer {
 #else
 			mMsaaSamples = 0;
 			mCoreProfile = true;
-			mVersion = std::pair<int,int>( 3, 2 );	
+			mVersion = std::pair<int,int>( 3, 2 );
 #endif
 #if ! defined( CINDER_GL_ES )
 			mDebugContext = false;
 			mDebugLogSeverity = 0;
 			mDebugBreakSeverity = 0;
+			mMultiGpuEnabledNV = false;
+			mMultiGpuModeNV = MultiGpuModeNV::SINGLE;
 #endif
 			mObjectTracking = false;
 			mStencil = false;
@@ -86,20 +90,22 @@ class RendererGl : public Renderer {
 		Options&	coreProfile( bool enable = true ) { mCoreProfile = enable; return *this; }
 		bool		getCoreProfile() const { return mCoreProfile; }
 		void		setCoreProfile( bool enable ) { mCoreProfile = enable; }
-		
+
 		Options&			version( int major, int minor ) { mVersion = std::make_pair( major, minor ); return *this; }
 		Options&			version( std::pair<int,int> version ) { mVersion = version; return *this; }
 		std::pair<int,int>	getVersion() const { return mVersion; }
 		void				setVersion( int major, int minor ) { mVersion = std::make_pair( major, minor ); }
 		void				setVersion( std::pair<int,int> version ) { mVersion = version; }
-		
+
 		//! Sets the number of samples used for Multisample Anti-Aliasing (MSAA). Valid values are powers of 2 (0, 2, 4, 8, 16). Defaults to \c 0.
 		Options&	msaa( int samples ) { mMsaaSamples = samples; return *this; }
 		//! Returns the number of samples used for Multisample Anti-Aliasing (MSAA).
 		int			getMsaa() const { return mMsaaSamples; }
 
 #if ! defined( CINDER_GL_ES )
-		//! Enables a debug context (per \c ARB_debug_output). Currently only implemented by MSW GL implementations. By default this is made GL_DEBUG_OUTPUT_SYNCHRONOUS
+		enum class MultiGpuModeNV { SINGLE, AFR, MULTICAST, MULTI_DISPLAY_MULTICAST };
+
+		//! Enables a debug context (per \c ARB_debug_output). Currently only implemented by MSW and Linux GL implementations. By default this is made \c GL_DEBUG_OUTPUT_SYNCHRONOUS
 		Options&	debug() { mDebugContext = true; return *this; }
 		//! Returns whether the context has debug enabled
 		bool		getDebug() const { return mDebugContext; }
@@ -111,6 +117,18 @@ class RendererGl : public Renderer {
 		Options&	debugBreak( GLenum severity = GL_DEBUG_SEVERITY_HIGH ) { mDebugBreakSeverity = severity; mDebugContext = true; return *this; }
 		//! Returns the severity threshold for debug breaking. A value of \c 0 indicates debugBreak is off.
 		GLenum		getDebugBreakSeverity() const { return mDebugBreakSeverity; }
+		//! (NVIDIA ONLY) Specify the multi-GPU strategy (SLI mode) to be WGL_CONTEXT_MULTIGPU_ATTRIB_SINGLE_NV.
+		Options&	multiGpuSingleNV() { mMultiGpuEnabledNV = true; mMultiGpuModeNV = MultiGpuModeNV::SINGLE; return *this; }
+		//! (NVIDIA ONLY) Specify the multi-GPU strategy (SLI mode) to be WGL_CONTEXT_MULTIGPU_ATTRIB_AFR_NV.
+		Options&	multiGpuAFRNV() { mMultiGpuEnabledNV = true; mMultiGpuModeNV = MultiGpuModeNV::AFR; return *this; }
+		//! (NVIDIA ONLY) Specify the multi-GPU strategy (SLI mode) to be WGL_CONTEXT_MULTIGPU_ATTRIB_MULTICAST_NV.
+		Options&	multiGpuMulticastNV() { mMultiGpuEnabledNV = true; mMultiGpuModeNV = MultiGpuModeNV::MULTICAST; return *this; }
+		//! (NVIDIA ONLY) Specify the multi-GPU strategy (SLI mode) to be WGL_CONTEXT_MULTIGPU_ATTRIB_MULTI_DISPLAY_MULTICAST_NV.
+		Options&	multiGpuMultiDisplayMulticastNV() { mMultiGpuEnabledNV = true; mMultiGpuModeNV = MultiGpuModeNV::MULTI_DISPLAY_MULTICAST; return *this; }
+		//! (NVIDIA ONLY) Returns whether multi-GPU (SLI mode) is active or not.
+		bool		isMultiGpuEnabledNV() const { return mMultiGpuEnabledNV; }
+		//! (NVIDIA ONLY) Returns the multi-GPU strategy (SLI mode).
+		MultiGpuModeNV	getMultiGpuModeNV() const { return mMultiGpuModeNV; }
 #endif
 
 		//! Enables Context-level tracking of live objects. Defaults to \c false.
@@ -124,7 +142,7 @@ class RendererGl : public Renderer {
 		int			getDepthBufferDepth() const { return mDepthBufferBits; }
 		//! Sets the number of bits dedicated to the depth buffer. Default is \c 24.
 		void		setDepthBufferDepth( int depthBufferBits ) { mDepthBufferBits = depthBufferBits; }
-		
+
 		//! Enables or disables a stencil buffer. Default is \c false
 		Options&	stencil( bool createStencil = true ) { mStencil = createStencil; return *this; }
 		//! Returns whether a stenci buffer is enabled. Default is \c false
@@ -147,6 +165,8 @@ class RendererGl : public Renderer {
 		bool					mDebugContext;
 		GLenum					mDebugLogSeverity; // initial value of 0 means debug logging is disabled
 		GLenum					mDebugBreakSeverity; // initial value of 0 means debug break is disabled
+		bool					mMultiGpuEnabledNV;
+		MultiGpuModeNV			mMultiGpuModeNV;
 #endif
 		bool					mObjectTracking;
 	};
@@ -157,7 +177,7 @@ class RendererGl : public Renderer {
 
 	static RendererGlRef	create( const Options &options = Options() )	{ return RendererGlRef( new RendererGl( options ) ); }
 	RendererRef				clone() const override							{ return RendererGlRef( new RendererGl( *this ) ); }
- 
+
 #if defined( CINDER_COCOA )
 	#if defined( CINDER_MAC )
 		void						setup( CGRect frame, NSView *cinderView, RendererRef sharedRenderer, bool retinaEnabled ) override;
@@ -170,17 +190,25 @@ class RendererGl : public Renderer {
 		EAGLContext*				getEaglContext() const;
 	#endif
 	void	setFrameSize( int width, int height ) override;
-#elif defined( CINDER_MSW )
-	void	setup( HWND wnd, HDC dc, RendererRef sharedRenderer ) override;
-	void	kill() override;
-	HWND	getHwnd() override { return mWnd; }
-	HDC		getDc() override;
-	void	prepareToggleFullScreen();
-	void	finishToggleFullScreen();
-#elif defined( CINDER_WINRT )
-	void	setup( ::Platform::Agile<Windows::UI::Core::CoreWindow> wnd, RendererRef sharedRenderer ) override;
-	void	prepareToggleFullScreen();
-	void	finishToggleFullScreen();
+#elif defined( CINDER_MSW_DESKTOP )
+	virtual void	setup( WindowImplMsw *windowImpl, RendererRef sharedRenderer );
+	virtual void	kill();
+	virtual HWND	getHwnd() const override;
+	virtual HDC		getDc() const override;
+	virtual void	prepareToggleFullScreen();
+	virtual void	finishToggleFullScreen();
+#elif defined( CINDER_UWP )
+	void			setup( ::Platform::Agile<Windows::UI::Core::CoreWindow> wnd, RendererRef sharedRenderer ) override;
+	void			prepareToggleFullScreen();
+	void			finishToggleFullScreen();
+#elif defined( CINDER_ANDROID )
+	virtual void	setup( ANativeWindow *nativeWindow, RendererRef sharedRenderer ) override;
+#elif defined( CINDER_LINUX )
+#if defined( CINDER_HEADLESS )
+	virtual void	setup( ci::ivec2 renderSize, RendererRef sharedRenderer ) override;
+#else
+	virtual void	setup( void* nativeWindow, RendererRef sharedRenderer ) override;
+#endif
 #endif
 
 	const Options&	getOptions() const { return mOptions; }
@@ -205,7 +233,7 @@ protected:
 	RendererImplGlMac		*mImpl;
 #elif defined( CINDER_COCOA_TOUCH )
 	RendererImplGlCocoaTouch	*mImpl;
-#elif defined( CINDER_MSW )
+#elif defined( CINDER_MSW_DESKTOP )
 	#if defined( CINDER_GL_ANGLE )
 		class RendererImplGlAngle	*mImpl;
 		friend class				RendererImplGlAngle;
@@ -213,11 +241,19 @@ protected:
 		class RendererImplGlMsw		*mImpl;
 		friend class				RendererImplGlMsw;
 	#endif
-	HWND						mWnd;
-#elif defined( CINDER_WINRT )
+	WindowImplMsw					*mWindowImpl;
+#elif defined( CINDER_UWP )
 	class RendererImplGlAngle	*mImpl;
 	friend class				RendererImplGlAngle;
 	::Platform::Agile<Windows::UI::Core::CoreWindow>	mWnd;
+#elif defined( CINDER_ANDROID )
+	class RendererGlAndroid		*mImpl;
+	RendererGlAndroid		  *getImpl() { return mImpl; }
+	friend class WindowImplAndroid;
+#elif defined( CINDER_LINUX )
+	class RendererGlLinux	*mImpl;
+	RendererGlLinux			*getImpl() { return mImpl; }
+	friend class WindowImplLinux;
 #endif
 
 	std::function<void( Renderer* )> mStartDrawFn;

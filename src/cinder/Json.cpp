@@ -1,5 +1,5 @@
 /*
- Copyright (c) 2012, The Cinder Project
+ Copyright (c) 2018, The Cinder Project
  All rights reserved.
  
  Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
@@ -25,7 +25,6 @@
 */
 
 
-#include <boost/algorithm/string.hpp>
 #include "jsoncpp/json.h"
 
 #include "cinder/Json.h"
@@ -190,12 +189,12 @@ JsonTree::JsonTree( const string &key, uint32_t value )
 
 JsonTree::JsonTree( const string &key, int64_t value )
 {
-	init( key, Json::Value( value ), true, NODE_VALUE, VALUE_INT );
+	init( key, Json::Value( static_cast<Json::Value::Int64>( value ) ), true, NODE_VALUE, VALUE_INT );
 }
 	
 JsonTree::JsonTree( const string &key, uint64_t value )
 {
-	init( key, Json::Value( value ), true, NODE_VALUE, VALUE_UINT );
+	init( key, Json::Value( static_cast<Json::Value::UInt64>( value ) ), true, NODE_VALUE, VALUE_UINT );
 }
 
 JsonTree JsonTree::makeArray( const std::string &key )
@@ -247,12 +246,6 @@ void JsonTree::init( const string &key, const Json::Value &value, bool setType, 
 				mValueType = VALUE_BOOL;
 			}
 		}
-		else if ( value.isDouble() ) { 
-			mValue = toString( value.asDouble() );
-			if ( setType ) {
-				mValueType = VALUE_DOUBLE;
-			}
-		}
 		else if ( value.isInt() ) { 
 			mValue = toString( value.asLargestInt() );
 			if ( setType ) {
@@ -269,6 +262,12 @@ void JsonTree::init( const string &key, const Json::Value &value, bool setType, 
 			mValue = toString( value.asLargestUInt() );
 			if ( setType ) {
 				mValueType = VALUE_UINT;
+			}
+		}
+		else if ( value.isDouble() ) { // jsoncpp defines isDouble() to include integral types, so this must follow isInt() && isUint() 
+			mValue = toString( value.asDouble() );
+			if ( setType ) {
+				mValueType = VALUE_DOUBLE;
 			}
 		}
 	}
@@ -518,9 +517,9 @@ string JsonTree::getPath( char separator ) const
 JsonTree* JsonTree::getNodePtr( const string &relativePath, bool caseSensitive, char separator ) const
 {
     // Format path into dotted address
-	std::string path = boost::replace_all_copy( relativePath, "[", std::string( 1, separator ) );
-	path = boost::replace_all_copy( path, "'", "");
-	path = boost::replace_all_copy( path, "]", "");
+	std::string path = replaceAll( relativePath, "[", std::string( 1, separator ) );
+	path = replaceAll( path, "'", "");
+	path = replaceAll( path, "]", "");
 
     // Start search from this node
 	JsonTree *curNode = const_cast<JsonTree*>( this );
@@ -534,7 +533,7 @@ JsonTree* JsonTree::getNodePtr( const string &relativePath, bool caseSensitive, 
         // The key is numeric
 		if( isIndex( *pathIt ) ) {
             // Find child which uses this index as its key
-			uint32_t index = boost::lexical_cast<int32_t>( *pathIt );
+			uint32_t index = std::stoi( *pathIt );
 			uint32_t i = 0;
 			for ( node = curNode->getChildren().begin(); node != curNode->getChildren().end(); ++node, i++ ) {
 				if ( i == index ) {
@@ -551,7 +550,7 @@ JsonTree* JsonTree::getNodePtr( const string &relativePath, bool caseSensitive, 
                 string key2 = *pathIt;
                 if( caseSensitive && key1 == key2 ) {
                     keysMatch = true;
-                } else if ( !caseSensitive && ( boost::iequals( key1, key2 ) ) ) {
+                } else if ( !caseSensitive && ( ci::asciiCaseEqual( key1, key2 ) ) ) {
                     keysMatch = true;
                 }
                 
@@ -627,13 +626,13 @@ Json::Value JsonTree::createNativeDoc( WriteOptions writeOptions ) const
 				value = Json::Value( fromString<double>( mValue ) );
 				break;
 			case VALUE_INT:
-				value = Json::Value( fromString<int64_t>( mValue ) );
+				value = Json::Value( static_cast<Json::Value::Int64>( fromString<int64_t>( mValue ) ) );
 				break;
 			case VALUE_STRING:
 				value = Json::Value( mValue );
 				break;
 			case VALUE_UINT:
-				value = Json::Value( fromString<uint64_t>( mValue ) );
+				value = Json::Value( static_cast<Json::Value::UInt64>( fromString<uint64_t>( mValue ) ) );
 				break;
 			}
 		break;
@@ -685,8 +684,7 @@ void JsonTree::write( DataTargetRef target, JsonTree::WriteOptions writeOptions 
 
 		// This routine serializes JsonCpp data and formats it
 		if( writeOptions.getIndented() ) {
-			jsonString = value.toStyledString();
-			boost::replace_all( jsonString, "\n", "\r\n" );
+			jsonString = replaceAll( value.toStyledString(), "\n", "\r\n" );
 		} else {
 			Json::FastWriter writer;
 			jsonString = writer.write( value );
@@ -703,13 +701,27 @@ void JsonTree::write( DataTargetRef target, JsonTree::WriteOptions writeOptions 
 	
 }
 
+string JsonTree::replaceAll( const string& text, const string& search, const string& replace ) const
+{
+	string output = "";
+	const vector<string>& tokens = split( text, search );
+	for ( vector<string>::const_iterator iter = tokens.cbegin(); iter != tokens.cend(); ) {
+		output += *iter;
+		++iter;
+		if ( iter != tokens.cend() ) {
+			output += replace;
+		}
+	}
+	return output;
+}
+
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 JsonTree::ExcChildNotFound::ExcChildNotFound( const JsonTree &node, const string &childPath ) throw()
 {
-#if (defined (CINDER_MSW ) || defined( CINDER_WINRT ))
+#if defined( CINDER_MSW )
 	sprintf_s( mMessage, "Could not find child: %s for node: %s", childPath.c_str(), node.getPath().c_str() );
 #else
 	sprintf( mMessage, "Could not find child: %s for node: %s", childPath.c_str(), node.getPath().c_str() );
@@ -718,7 +730,7 @@ JsonTree::ExcChildNotFound::ExcChildNotFound( const JsonTree &node, const string
 
 JsonTree::ExcNonConvertible::ExcNonConvertible( const JsonTree &node ) throw()
 {
-#if (defined (CINDER_MSW ) || defined( CINDER_WINRT ))
+#if defined( CINDER_MSW )
 	sprintf_s( mMessage, "Unable to convert value for node: %s", node.getPath().c_str() );
 #else
 	sprintf( mMessage, "Unable to convert value for node: %s", node.getPath().c_str() );
@@ -727,7 +739,7 @@ JsonTree::ExcNonConvertible::ExcNonConvertible( const JsonTree &node ) throw()
 
 JsonTree::ExcJsonParserError::ExcJsonParserError( const string &errorMessage ) throw()
 {
-#if (defined (CINDER_MSW ) || defined( CINDER_WINRT ))
+#if defined( CINDER_MSW )
 	sprintf_s( mMessage, "Unable to parse JSON\n: %s", errorMessage.c_str() );
 #else
 	sprintf( mMessage, "Unable to parse JSON\n: %s", errorMessage.c_str() );
